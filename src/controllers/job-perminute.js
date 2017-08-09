@@ -62,6 +62,7 @@ var m = nodeschedule.scheduleJob(perminuterule, function () {
         });
 });
 
+
 async function LogicPerMember(memberid) {
     try {
         paramObject = {};
