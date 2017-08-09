@@ -13,6 +13,7 @@
   "dependencies": {
     "agenda": "0.9.1",
     "assert": "^1.4.1",
+    "axios": "^0.16.2",
     "bcrypt-nodejs": "0.0.3",
     "immutable": "^3.8.1",
     "jsonwebtoken": "^7.4.1",
@@ -23,6 +24,7 @@
     "node-schedule": "^1.2.1",
     "randomstring": "^1.1.5",
     "request": "^2.79.0",
+    "request-promise": "^4.2.1",
     "restify": "^4.1.1",
     "restify-oauth2": "^4.0.4",
     "underscore": "^1.8.3"

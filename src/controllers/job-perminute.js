@@ -1,7 +1,7 @@
 
 
 const _ = require('underscore');
-const request = require('request');
+const request = require('axios');
 const mongoose = require('mongoose');
 
 const Category = require('../models/category');
@@ -29,7 +29,7 @@ const access_token = constant.FACEBOOK_TOKEN
 const requestUrl = `https://graph.facebook.com/v2.9/me/messages?access_token=${access_token}`;
 
 var paramObject = {};
-
+var oneprofile = {};
 
 var perminuterule = new nodeschedule.RecurrenceRule();
 perminuterule.second = 00;
@@ -48,36 +48,44 @@ var m = nodeschedule.scheduleJob(perminuterule, function () {
     predicate.scheduletime = scheduletime;
     Scheduled.find(predicate)
         // todo: add sorting by current date
-        .populate({ path: 'memberid', select: '_id memberid categories profiletype gender name currentsequence' })
+        .populate({ path: 'memberid', select: '_id memberid categories coach profiletype gender name currentsequence' })
         .exec()
         .then(data => {
             console.log(data.length + " schedule found");
-            data.forEach(memberDetails => {
-                LogicPerMember(memberDetails);
+            data.forEach(schedule => {
+                var profile = schedule.memberid.profiletype;
+                if (profile != '' || profile != null || profile != undefined)
+                    LogicPerMember(schedule.memberid);
             })
         }).catch(err => {
             throw err;
         });
 });
 
-async function LogicPerMember(memberDetails) {
+async function LogicPerMember(memberid) {
     try {
         paramObject = {};
-        paramObject.name = memberDetails.name;
-        paramObject._id = memberDetails._id;
-        paramObject.memberid = memberDetails.memberid;
-        paramObject.profiletype = memberDetails.profiletype;
-        paramObject.gender = memberDetails.gender;
-        paramObject.currentsequence = memberDetails.currentsequence;
-        await getCategorycontent(memberDetails.categories);
+        oneprofile = {};
+        paramObject._id = memberid._id;
+        paramObject.name = memberid.name;
+        paramObject.coach = memberid.coach;
+        paramObject.memberid = memberid.memberid;
+        paramObject.profiletype = memberid.profiletype;
+        paramObject.gender = memberid.gender;
+        paramObject.currentsequence = memberid.currentsequence;
+        await getCategorycontent(memberid.categories);
         await getUserProfile();
+        await updateprofiledelivery();
         await getText();
         await getTagTerm();
         await getcontenttype();
         await bingsearch();
         await fbsendtext();
+        await updatemessenger(paramObject.text);
         await fbsendattachment();
+        await updatemessenger("attachment:" + paramObject.contentUrl);
         await updatesequence();
+        await updatecoachmotivationsent();
         await createlog();
     } catch (error) {
         throw error;
@@ -86,7 +94,7 @@ async function LogicPerMember(memberDetails) {
 
 var getCategorycontent = (categories) => {
     var randomed = randomarray(categories);
-    return Category.findById(randomed).
+    return Category.findById(randomed.category).
         then(data => {
             //name vid content
             paramObject.vidcontent = randomarray(data.vidcontent);
@@ -99,15 +107,13 @@ var getCategorycontent = (categories) => {
 var getUserProfile = () => {
     return UserProfile.find({ memberid: paramObject._id, delivery: { $ne: 0 } })
         .then(userprofile => {
-            var oneprofile;
             //need muna matapos ung if else
             if (userprofile.length > 0) {
                 oneprofile = randomarray(userprofile);
-                getoneprofile(oneprofile);
             }
             else {
                 UserProfile.remove({ memberid: paramObject._id });
-                Profile.find({ profile: paramObject.profiletype, delivery: { $ne: "0" } })
+                return Profile.find({ profile: paramObject.profiletype, delivery: { $ne: "0" } })
                     .then(data => {
                         var tosaveuserprofile = [];
                         data.map((item, index) => {
@@ -118,10 +124,9 @@ var getUserProfile = () => {
                                 delivery: item.delivery
                             })
                         });
-                        UserProfile.insertMany(tosaveuserprofile)
+                        return UserProfile.insertMany(tosaveuserprofile)
                             .then(userprofile => {
                                 oneprofile = randomarray(userprofile);
-                                getoneprofile(oneprofile);
                             }).catch(err => { throw err });
                     })
             }
@@ -129,9 +134,15 @@ var getUserProfile = () => {
         }).catch(err => { throw err });
 };
 
-var getoneprofile = (oneprofile) => {
+var updateprofiledelivery = () => {
+    var deliveryval;
+    if (paramObject.currentsequence >= 2 && paramObject.currentsequence <= 5)
+        deliveryval = -1
+    else
+        deliveryval = 0
+
     return UserProfile.findOneAndUpdate({ memberid: oneprofile.memberid, variable: oneprofile.variable, tag: oneprofile.tag },
-        { $inc: { delivery: -1 } })
+        { $inc: { delivery: deliveryval } })
         .then(userprofile => {
             paramObject.variable = oneprofile.variable;
             paramObject.tag = oneprofile.tag;
@@ -142,11 +153,11 @@ var getoneprofile = (oneprofile) => {
 var getText = () => {
     return SendText.find({ tag: paramObject.tag, variable: paramObject.variable })
         .then(data => {
-            var text = randomarray(data.text)
+            data = randomarray(data);
             var textarray = [
-                paramObject.name + ", " + text,
-                text,
-                text + " " + paramObject.name + "."
+                paramObject.name.first_name + ", " + data.text,
+                data.text,
+                data.text + " " + paramObject.name.first_name + "."
             ]
             paramObject.text = randomarray(textarray);
         }).catch(err => { throw err });
@@ -173,7 +184,6 @@ var getcontenttype = () => {
         paramObject.contenttype = "videos"
         paramObject.searchquery = paramObject.vidcontent + " -god -government -religion -politics"
     }
-    return;
 }
 
 var bingsearch = () => {
@@ -184,14 +194,13 @@ var bingsearch = () => {
         url: `https://api.cognitive.microsoft.com/bing/${constant.BING_COGNITIVE_VERSION}/${paramObject.contenttype}/search?q=${paramObject.searchquery}&responseFilter=${paramObject.contenttype}&safeSearch=Moderate&count=60`
     };
     //console.log(options);
-    return request(options)
-        .then(body => {
-            searchresult = randomarray(body.value);
-            paramObject.contentUrl = searchresult.contentUrl
-            paramObject.title = searchresult.name
-            paramObject.thumbnail = searchresult.thumbnailUrl
-            paramObject.description = searchresult.description
-        })
+    return request(options).then(res => {
+        searchresult = randomarray(res.data.value);
+        console.log(searchresult);
+        paramObject.contentUrl = searchresult.contentUrl
+        paramObject.title = searchresult.name
+        paramObject.thumbnail = searchresult.thumbnailUrl
+    }).catch(err => { throw err });
 }
 
 
@@ -204,18 +213,12 @@ var fbsendtext = () => {
             text: paramObject.text
         }
     }
-    var options = {
-        method: 'POST',
-        body: requestData,
-        url: requestUrl,
-        json: true
-    }
+
     // console.log(options);
-    return request.post(options)
-        .then(data => {
-            updatemessenger(paramObject.text);
-            return data;
-        }).catch(err => { throw err })
+    return request.post(requestUrl, requestData).then(data => {
+        console.log("text sent");
+    }).catch(err => { throw err });
+
 }
 
 var fbsendattachment = () => {
@@ -246,24 +249,26 @@ var fbsendattachment = () => {
         scrape: true
 
     }
-    var options = {
-        method: 'POST',
-        body: requestData,
-        url: requestUrl,
-        json: true
-    }
     // console.log(options);
-    return request.post(options)
+    return request.post(requestUrl, requestData).then(data => {
+        console.log("attachment sent");
+    }).catch(err => { throw err });
+}
+
+
+
+
+var updatecoachmotivationsent = () => {
+    return User.findOneAndUpdate({ _id: paramObject.coach }, { $inc: { sentmotivation: 1 } })
         .then(data => {
-            updatemessenger("attachment:" + paramObject.contentUrl);
             return data;
-        }).catch(err => { throw err });
+        }).catch(err => { throw err })
 }
 
 
 var updatesequence = () => {
-    currentsequence = currentsequence == 7 ? 1 : currentsequence + 1
-    return Member.findOneAndUpdate({ memberid: memberid }, { currentsequence: currentsequence })
+    var currentsequence = paramObject.currentsequence == 7 ? 1 : paramObject.currentsequence + 1
+    return Member.findOneAndUpdate({ memberid: paramObject._id }, { currentsequence: currentsequence })
         .then(data => {
             return data;
         }).catch(err => { throw err })
@@ -285,6 +290,7 @@ var updatemessenger = (message) => {
 
 
 var createlog = () => {
+    console.log(paramObject);
     var logsparam = {
         memberid: paramObject._id,
         profiletype: paramObject.profiletype,
@@ -307,11 +313,11 @@ var createlog = () => {
 
 
 function randomarray(randomarray) {
-        try {
-                var randomresult = randomarray[Math.floor(Math.random() * randomarray.length)]
-                return randomresult;
-        } catch (error) {
-                console.log(randomarray);
-        }
+    try {
+        var randomresult = randomarray[Math.floor(Math.random() * randomarray.length)]
+        return randomresult;
+    } catch (error) {
+        console.log(randomarray);
+    }
 
 }
