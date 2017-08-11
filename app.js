@@ -1,9 +1,9 @@
 'use strict';
 
-const restify = require('restify');
-const mongoose = require('mongoose');
+var restify = require('restify');
+var mongoose = require('mongoose');
 
-const restifyOAuth2 = require('restify-oauth2');
+var restifyOAuth2 = require('restify-oauth2');
 
 
 
