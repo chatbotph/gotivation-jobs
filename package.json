@@ -8,12 +8,15 @@
     "start": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "engines":{"node": "v7.7.3"},
+  "engines": {
+    "node": "v7.7.3"
+  },
   "author": "B3nch",
   "license": "ISC",
   "dependencies": {
     "agenda": "0.9.1",
     "assert": "^1.4.1",
+    "async": "^2.5.0",
     "axios": "^0.16.2",
     "bcrypt-nodejs": "0.0.3",
     "immutable": "^3.8.1",

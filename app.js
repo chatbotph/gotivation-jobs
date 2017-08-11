@@ -1,16 +1,15 @@
 'use strict';
 
-var restify = require('restify');
-var mongoose = require('mongoose');
+const restify = require('restify');
+const mongoose = require('mongoose');
 
-var restifyOAuth2 = require('restify-oauth2');
+const restifyOAuth2 = require('restify-oauth2');
 
 
 
 var uristring = process.env.MONGOLAB_URI ||
 'mongodb://chatbotph:N3wb3g1nn1ngs@ds127983.mlab.com:27983/gotivation';
 
-mongoose.Promise = global.Promise;
 mongoose.connect(uristring, { config: { autoIndex: false } }, function (err, res) {
     if (err) {
         console.log('ERROR connecting to: ' + uristring + '. ' + err);
