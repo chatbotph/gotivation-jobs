@@ -30,4 +30,5 @@ server.use(restify.queryParser());
 
 module.exports.server = server;
 var jobperminute = require('./src/controllers/job-perminute');
+var jobperhour = require('./src/controllers/job-perhour');
 

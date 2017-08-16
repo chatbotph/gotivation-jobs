@@ -31,14 +31,11 @@ const requestUrl = `https://graph.facebook.com/v2.9/me/messages?access_token=${a
 var paramObject = {};
 var oneprofile = {};
 
-var perminuterule = new nodeschedule.RecurrenceRule();
-perminuterule.second = 00;
-// DEFAULT MOTIVATION 
 
 
 
 var perminuterule = new nodeschedule.RecurrenceRule();
-perminuterule.second = 00;
+perminuterule.hour = 00;
 // DEFAULT MOTIVATION 
 var m = nodeschedule.scheduleJob(perminuterule, function () {
     var predicate = {};
@@ -48,13 +45,12 @@ var m = nodeschedule.scheduleJob(perminuterule, function () {
     predicate.scheduletime = scheduletime;
     Scheduled.find(predicate)
         // todo: add sorting by current date
-        .populate({ path: 'memberid', select: '_id memberid categories coach profiletype gender name currentsequence' })
+        .populate({ path: 'memberid', select: '_id memberid categories profiletype gender name currentsequence' })
         .exec()
         .then(data => {
             console.log(data.length + " schedule found");
             data.forEach(schedule => {
-                var profile = schedule.memberid.profiletype;
-                if (profile != '' || profile != null || profile != undefined)
+                if (schedule.memberid.profiletype != '' || schedule.memberid.profiletype != null || schedule.memberid.profiletype != undefined)
                     LogicPerMember(schedule.memberid);
             })
         }).catch(err => {
@@ -69,7 +65,6 @@ async function LogicPerMember(memberid) {
         oneprofile = {};
         paramObject._id = memberid._id;
         paramObject.name = memberid.name;
-        paramObject.coach = memberid.coach;
         paramObject.memberid = memberid.memberid;
         paramObject.profiletype = memberid.profiletype;
         paramObject.gender = memberid.gender;
@@ -86,7 +81,6 @@ async function LogicPerMember(memberid) {
         await fbsendattachment();
         await updatemessenger("attachment:" + paramObject.contentUrl);
         await updatesequence();
-        await updatecoachmotivationsent();
         await createlog();
     } catch (error) {
         throw error;
@@ -257,14 +251,6 @@ var fbsendattachment = () => {
 }
 
 
-
-
-var updatecoachmotivationsent = () => {
-    return User.findOneAndUpdate({ _id: paramObject.coach }, { $inc: { sentmotivation: 1 } })
-        .then(data => {
-            return data;
-        }).catch(err => { throw err })
-}
 
 
 var updatesequence = () => {
