@@ -35,7 +35,7 @@ var oneprofile = {};
 
 
 var perminuterule = new nodeschedule.RecurrenceRule();
-perminuterule.hour = 00;
+perminuterule.second = 00;
 // DEFAULT MOTIVATION 
 var m = nodeschedule.scheduleJob(perminuterule, function () {
     var predicate = {};

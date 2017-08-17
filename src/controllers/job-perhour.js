@@ -33,7 +33,7 @@ var paramObject = {};
 
 
 var perhourrule = new nodeschedule.RecurrenceRule();
-perhourrule.second = 00;
+perhourrule.minute = 00;
 // DEFAULT MOTIVATION 
 var m = nodeschedule.scheduleJob(perhourrule, function () {
     var predicate = {};
